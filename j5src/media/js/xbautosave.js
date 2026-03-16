@@ -34,10 +34,14 @@ document.addEventListener('DOMContentLoaded', function() {
 			box = document.createElement('div');
 			box.innerHTML =amsg ;
 			document.body.appendChild(box);
-			box.addEventListener('click',function(e){
-				e.parentNode.removeChild(e);
-				popupDiv.classList.remove('show');
-			})
+			box.addEventListener('click', function () {
+				if (box.parentNode) {
+					box.parentNode.removeChild(box);
+				}
+				if (!popupDiv.childElementCount) {
+					popupDiv.classList.remove('show');
+				}
+			});
 			div.push(box)
 		}
 		
@@ -64,6 +68,9 @@ document.addEventListener('DOMContentLoaded', function() {
 			inputtask.value = "article.apply";
 		})
 		let itemform = document.querySelector("#item-form");
+		if (!itemform) {
+			return;
+		}
 		Joomla.request({
 			method: "POST",
 			url: itemform.getAttribute("action"),
@@ -95,7 +102,7 @@ document.addEventListener('DOMContentLoaded', function() {
 	window.doAutosaveOldData = null;
 	window.doAutosave = function (checkupdate) {
 		let articletext = document.querySelector('#jform_articletext');
-		if (!isVisible(articletext)) {
+		if (articletext && !isVisible(articletext)) {
 			if (!window.updateEditorAutosave) {
 				if (window['Joomla'] && JoomlaEditor && JoomlaEditor.get('jform_articletext')) {
 					if (JoomlaEditor.get('jform_articletext').getValue) {
@@ -117,6 +124,9 @@ document.addEventListener('DOMContentLoaded', function() {
 			}
 		}
 		let itemform = document.querySelector('#item-form');
+		if (!itemform) {
+			return false;
+		}
 		var data = serialize(itemform);
 		if (checkupdate===3) {
 			window.doAutosaveOldData = data;
@@ -130,7 +140,9 @@ document.addEventListener('DOMContentLoaded', function() {
 			var parser = new DOMParser();
 			var newdoc = parser.parseFromString(resp, "text/html");			
 			let systemmsg = newdoc.querySelector('#system-message-container');
-			autosavePopup(systemmsg.innerHTML) ;
+			if (systemmsg && systemmsg.innerHTML.trim()) {
+				autosavePopup(systemmsg.innerHTML);
+			}
 			let alias = newdoc.querySelector('#jform_alias');
 			if (alias && alias.value) {
 				document.querySelector('#jform_alias').value = alias.value;
@@ -139,7 +151,12 @@ document.addEventListener('DOMContentLoaded', function() {
 			if (jformid && jformid.value) {
 				document.querySelector('#jform_id').value = jformid.value;
 				let itemform = document.querySelector("#item-form");
-				itemform.setAttribute("action",itemform.getAttribute("action").replace(/&id=[0-9]+/,'&id='+jform_id.value));
+				const currentAction = itemform.getAttribute("action");
+				if (/&id=[0-9]+/.test(currentAction)) {
+					itemform.setAttribute("action", currentAction.replace(/&id=[0-9]+/, '&id=' + jformid.value));
+				} else {
+					itemform.setAttribute("action", currentAction + '&id=' + jformid.value);
+				}
 			} 
 			newdoc = null;
 		});
@@ -193,7 +210,13 @@ document.addEventListener('DOMContentLoaded', function() {
 		let iframe = document.querySelectorAll('body iframe');
 		
 		iframe.forEach(function(e){
-			windows.push(e.contentWindow || e)
+			try {
+				if (e.contentWindow) {
+					windows.push(e.contentWindow);
+				}
+			} catch (err) {
+				// Ignore cross-origin iframes
+			}
 		})
 		windows.forEach(function(e){
 			if (window.chkkey) {

@@ -11,23 +11,22 @@
 namespace Crosborne\Plugin\Content\Xbautosave\Extension;
 defined('_JEXEC') or die;
 
-use Joomla\CMS\Form\Form;
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
-use Joomla\CMS\Uri\Uri;
-use Joomla\CMS\Table\Extension AS TableExtension;
 
 class Xbautosave extends CMSPlugin 
 {
     protected $autoloadLanguage = true;
     protected $app;
     	
-	public function getParam($name, $defaultvalue = null) {
-		return $this->params->get($name, $defaultvalue)!==null ? $this->params->get($name, $defaultvalue) : $defaultvalue;
-	}
-	
-	function onContentPrepareForm() {
+    public function getParam($name, $defaultvalue = null)
+    {
+        return $this->params->get($name, $defaultvalue) !== null ? $this->params->get($name, $defaultvalue) : $defaultvalue;
+    }
+
+    public function onContentPrepareForm($form, $data = null)
+    {
 	    if (!$this->app->isClient('administrator')) { // only autosave on admin side
 	        return;
 	    }	    
@@ -50,28 +49,26 @@ class Xbautosave extends CMSPlugin
 		$period = '0'; // initialize $period
 		if ($this->getParam('use_autosave')) {
             $period = intval($this->getParam('autosave_period',30));
-            if ($this->getParam('article_id')!=$artid) { //is this a different article to last time we saved?
-                //confirm Autosave enabled and generate a warning message about multiple versions building up
-                $msg=''; 
+            $session = $this->app->getSession();
+            $lastNoticeArticleId = (int) $session->get('plg_content_xbautosave.article_id', 0);
+
+            if ($lastNoticeArticleId !== (int) $artid) { // is this a different article to last time we saved?
+                // confirm Autosave enabled and generate a warning message about multiple versions building up
+                $msg = '';
+
                 if ($this->getParam('use_autosave')) {
-                    $msg = Text::sprintf('PLG_CONTENT_ASAVE_RECOMMEND_MSG1',$period).' ';
+                    $msg = Text::sprintf('PLG_CONTENT_ASAVE_RECOMMEND_MSG1', $period) . ' ';
                 }
+
                 if ($this->getParam('use_keysave')) {
                     $msg .= Text::_('PLG_CONTENT_ASAVE_RECOMMEND_MSG2');
                 }
+
                 $msg .= Text::_('PLG_CONTENT_ASAVE_RECOMMEND_MSG3');
-                $this->app->enqueueMessage($msg,'Notice');
-                $table = new TableExtension(Factory::getDbo());
-                $table->load(array('element' => 'xbautosave'));
-                $this->params->set('article_id',$artid);
-                $table->set('params', $this->params->toString());
-                $table->store(); 
-                //this will hide the message every time we save this article until we have edited another one
+                $this->app->enqueueMessage($msg, 'Notice');
+                $session->set('plg_content_xbautosave.article_id', (int) $artid);
             } //endif article_id
             $period *= 1000;  //convert sec to ms
-            $doc->addScriptDeclaration('
-                        setInterval(function () { window.doAutosave(2);},'.$period.');
-                    ');
         } //endif use_autosave
         $keySaveEnabled = $this->getParam('use_keysave',0);
 		$doc->addScriptOptions('plg_content_xbautosave', 
